@@ -1,0 +1,122 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Changsha Flood</title>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp"></script>
+    <script type="text/javascript" src="/static/agentscript.js"></script>
+    <script type="text/javascript" src="/static/coffee-script.js"></script>
+    <script type="text/javascript" src="/static/data.js"></script>
+    <script type="text/coffeescript">
+    map = null
+    mapOptions = null
+    initialize = () ->
+      u = ABM.Util; DataSet = ABM.DataSet
+      class MyModel extends ABM.Model
+        startup: ->
+          @elevation = DataSet.importAscDataSet "/static/dem.asc", (ds)=>
+            @elevation.setModel(@)
+            { @slope, @aspect } = @elevation.slopeAndAspect()
+        setup: ->
+          @refreshPatches = @refreshLinks = false
+          @patches.own "elevation slope aspect depth runoff"  
+          @vision = 1 # try range in 1-5 or so
+          @speed = .25
+          @useAspect = true # model uses aspect/slope or elevation.
+          @lastMoved = @patches.length
+          @agents.setDefault "shape", "square"
+          @agents.setDefault "size", .1
+          @agents.setDefault "color", [0,0,250]
+          @patches.cacheRect @vision, false # cache inRadius @vision
+          #@img=@elevation.toDrawing()
+          @elevation.toPatchVar("elevation")
+          @slope.toPatchVar("slope")
+          @aspect.toPatchVar("aspect") 
+          p.sprout 1 for p in @patches
+          for p in @patches
+            p.color = u.randomGray 0, 256
+        step: ->
+          #@img=@elevation.toDrawing()
+          #p.sprout 1 for p in @patches
+          moved = 0
+          for a in @agents
+            n = if @useAspect then a.p.n else a.p.pRect
+            n = n.minOneOf "elevation"
+            if a.p.elevation > n.elevation
+              if @useAspect
+                a.heading = a.p.aspect
+              else
+                a.face n            
+              a.forward @speed
+              moved += 1
+          if moved is 0 or (@useAspect and @lastMoved is moved)
+            @stop()
+          if @anim.ticks % 10 is 0
+            @lastMoved = moved
+            p.sprout 1 for p in @patches
+          for p in @patches
+            p.color = [p.elevation,0,0]
+          #@model_draw(ctx)  
+      class AgentOverlay extends google.maps.OverlayView
+        constructor: (@id_, @bounds_, @map_) ->
+          @div_=null
+          @setMap(@map_)
+        onAdd: () ->
+          div = document.createElement('div')
+          div.id=@id_
+          div.style.borderStyle='none'
+          div.style.borderWidth='0px'
+          div.style.position='absolute'
+          div.style.backgroundColor='#f00'
+          @div_=div
+          panes = this.getPanes()
+          panes.overlayLayer.appendChild(@div_)
+          @model_ = new MyModel "layers", 1, 1, 193, 1, 126, true
+          @model_.debug()
+          @model_.start()
+        draw: () ->
+          overlayProjection = @getProjection()
+          sw = overlayProjection.fromLatLngToDivPixel(@bounds_.getSouthWest())
+          ne = overlayProjection.fromLatLngToDivPixel(@bounds_.getNorthEast())
+          geoPxWidth = ne.x-sw.x
+          geoPxHeight = sw.y-ne.y
+          div = @div_
+          div.style.left = sw.x+'px'
+          div.style.top = ne.y+'px'
+          div.style.width = geoPxWidth+'px'
+          div.style.height = geoPxHeight+'px'
+          for name, ctx of window.cx
+            if ctx.canvas
+              ctx.canvas.width=geoPxWidth
+              ctx.canvas.height=geoPxHeight
+              ctx.scale geoPxWidth/@model_.world.pxWidth*@model_.world.size, -geoPxHeight/@model_.world.pxHeight*@model_.world.size
+              ctx.translate -@model_.world.minXcor, -@model_.world.maxYcor
+              #@model_.draw(ctx) 
+            else
+              ctx.width=geoPxWidth
+              ctx.height=geoPxHeight
+            #@model_.draw(ctx) 
+            #u.clearCtx(ctx)
+            #u.clearCtx(window.psc)
+        onRemove: () ->
+          @div_.parentNode.removeChild(@div_)
+          @div_=null
+
+      #google.maps.visualRefresh = true
+      mapOptions =
+        zoom: 11
+        center: new google.maps.LatLng(28.2109015, 113.014812)
+      map = new google.maps.Map(document.getElementById('map-canvas'), mapOptions)
+      swBound = new google.maps.LatLng(28.192683, 112.979994)
+      neBound = new google.maps.LatLng(28.22912, 113.04963)
+      bounds = new google.maps.LatLngBounds(swBound,neBound)
+      overlay = new AgentOverlay 'layers', bounds, map
+    google.maps.event.addDomListener window, 'load', initialize
+    </script>
+  </head>
+  <body>
+	<div id="map-canvas" style="width: 960px; height: 640px"></div>
+  </body>
+</html>
