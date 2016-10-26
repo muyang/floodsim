@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>animator.coffee</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>animator.coffee</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <h3 id="animator">Animator</h3>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>Because not all models have the same amimator requirements, we build a class
+for customization by the programmer.  See these URLs for more info:</p>
+<ul>
+<li><a href="https://developer.mozilla.org/en-US/docs/JavaScript/Timers">JavaScript timers doc</a></li>
+<li><a href="http://goo.gl/ymEEX">Using timers &amp; requestAnimationFrame together</a></li>
+<li><a href="http://goo.gl/9Q3q">John Resig on timers</a></li>
+<li><a href="http://jsfiddle.net/calpo/H7EEE/">jsFiddle setTimeout vs rAF</a></li>
+<li><a href="http://javascript.info/tutorial/settimeout-setinterval">Timeout tutorial</a></li>
+<li><a href="http://javascript.info/tutorial/events-and-timing-depth">Events and timing in depth</a></li>
+</ul>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">Animator</span></span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>Create initial animator for the model, specifying default rate (fps) and multiStep.
+If multiStep, run the draw() and step() methods separately by draw() using
+requestAnimationFrame and step() using setTimeout.
+Mainly debug: noRAF (no requestAnimationFrame) use setTimeout for drawing.
+May remove after next performance review. Chrome: <a href="http://goo.gl/4yKnhR">http://goo.gl/4yKnhR</a></p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">constructor</span>: <span class="hljs-function"><span class="hljs-params">(<span class="hljs-property">@model</span>, <span class="hljs-property">@rate</span>=<span class="hljs-number">30</span>, <span class="hljs-property">@multiStep</span>=<span class="hljs-literal">false</span>, <span class="hljs-property">@noRAF</span>=<span class="hljs-literal">false</span>)</span> -&gt;</span> <span class="hljs-property">@reset</span>()</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>Adjust animator.  Call before model.start()
+in setup() to change default settings</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">setRate</span>: <span class="hljs-function"><span class="hljs-params">(<span class="hljs-property">@rate</span>, <span class="hljs-property">@multiStep</span>=<span class="hljs-literal">false</span>, <span class="hljs-property">@noRAF</span>=<span class="hljs-literal">false</span>)</span> -&gt;</span> <span class="hljs-property">@resetTimes</span>() <span class="hljs-comment"># Change rate while running?</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>start/stop model, often used for debugging and resetting model</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">start</span>: <span class="hljs-function">-&gt;</span>
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">unless</span> <span class="hljs-property">@stopped</span> <span class="hljs-comment"># avoid multiple animates</span>
+    <span class="hljs-property">@resetTimes</span>()
+    <span class="hljs-property">@stopped</span> = <span class="hljs-literal">false</span>
+    <span class="hljs-property">@animate</span>()
+  <span class="hljs-attribute">stop</span>: <span class="hljs-function">-&gt;</span>
+    <span class="hljs-property">@stopped</span> = <span class="hljs-literal">true</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>May return to: if @animHandle? then cancelAnimationFrame @animHandle</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> <span class="hljs-property">@animHandle</span>? <span class="hljs-keyword">and</span> <span class="hljs-keyword">not</span> <span class="hljs-property">@noRAF</span> <span class="hljs-keyword">then</span> cancelAnimationFrame <span class="hljs-property">@animHandle</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-property">@animHandle</span>? <span class="hljs-keyword">and</span> <span class="hljs-property">@noRAF</span> <span class="hljs-keyword">then</span> clearTimeout <span class="hljs-property">@animHandle</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-property">@timeoutHandle</span>? <span class="hljs-keyword">then</span> clearTimeout <span class="hljs-property">@timeoutHandle</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-property">@intervalHandle</span>? <span class="hljs-keyword">then</span> clearInterval <span class="hljs-property">@intervalHandle</span>
+    <span class="hljs-property">@animHandle</span> = <span class="hljs-property">@timerHandle</span> = <span class="hljs-property">@intervalHandle</span> = <span class="hljs-literal">null</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>Internal utility: reset time instance variables</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">resetTimes</span>: <span class="hljs-function">-&gt;</span>
+    <span class="hljs-property">@startMS</span> = <span class="hljs-property">@now</span>()
+    <span class="hljs-property">@startTick</span> = <span class="hljs-property">@ticks</span>
+    <span class="hljs-property">@startDraw</span> = <span class="hljs-property">@draws</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>Reset used by model.reset when resetting model.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">reset</span>: <span class="hljs-function">-&gt;</span> <span class="hljs-property">@stop</span>(); <span class="hljs-property">@ticks</span> = <span class="hljs-property">@draws</span> = <span class="hljs-number">0</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>Two handlers used by animation loop</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">step</span>: <span class="hljs-function">-&gt;</span> <span class="hljs-property">@ticks</span>++; <span class="hljs-property">@model</span>.stepAndEmit()
+  <span class="hljs-attribute">draw</span>: <span class="hljs-function">-&gt;</span> <span class="hljs-property">@draws</span>++; <span class="hljs-property">@model</span>.draw()</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>step and draw the model once, mainly debugging</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">once</span>: <span class="hljs-function">-&gt;</span> <span class="hljs-property">@step</span>(); <span class="hljs-property">@draw</span>()</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>Get current time, with high resolution timer if available</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">now</span>: <span class="hljs-function">-&gt;</span> (performance ? Date).now()</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>Time in ms since starting animator</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">ms</span>: <span class="hljs-function">-&gt;</span> <span class="hljs-property">@now</span>()-<span class="hljs-property">@startMS</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>Get ticks/draws per second. They will differ if multiStep.
+The “if” is to avoid from ms=0</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">ticksPerSec</span>: <span class="hljs-function">-&gt;</span>
+    <span class="hljs-keyword">if</span> (dt = <span class="hljs-property">@ticks</span>-<span class="hljs-property">@startTick</span>) <span class="hljs-keyword">is</span> <span class="hljs-number">0</span> <span class="hljs-keyword">then</span> <span class="hljs-number">0</span> <span class="hljs-keyword">else</span> Math.round dt*<span class="hljs-number">1000</span>/<span class="hljs-property">@ms</span>()
+  <span class="hljs-attribute">drawsPerSec</span>: <span class="hljs-function">-&gt;</span>
+    <span class="hljs-keyword">if</span> (dt = <span class="hljs-property">@draws</span>-<span class="hljs-property">@startDraw</span>) <span class="hljs-keyword">is</span> <span class="hljs-number">0</span> <span class="hljs-keyword">then</span> <span class="hljs-number">0</span> <span class="hljs-keyword">else</span> Math.round dt*<span class="hljs-number">1000</span>/<span class="hljs-property">@ms</span>()</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>Return a status string for debugging and logging performance</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">toString</span>: <span class="hljs-function">-&gt;</span>
+    <span class="hljs-string">"ticks: <span class="hljs-subst">#{<span class="hljs-property">@ticks</span>}</span>, draws: <span class="hljs-subst">#{<span class="hljs-property">@draws</span>}</span>, rate: <span class="hljs-subst">#{<span class="hljs-property">@rate</span>}</span>
+     tps/dps: <span class="hljs-subst">#{<span class="hljs-property">@ticksPerSec</span>()}</span>/<span class="hljs-subst">#{<span class="hljs-property">@drawsPerSec</span>()}</span>"</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>Animation via setTimeout and requestAnimationFrame</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-attribute">animateSteps</span>: <span class="hljs-function">=&gt;</span>
+    <span class="hljs-property">@step</span>()
+    <span class="hljs-property">@timeoutHandle</span> = setTimeout <span class="hljs-property">@animateSteps</span>, <span class="hljs-number">2</span> <span class="hljs-keyword">unless</span> <span class="hljs-property">@stopped</span>
+  <span class="hljs-attribute">animateDraws</span>: <span class="hljs-function">=&gt;</span>
+    <span class="hljs-keyword">if</span> <span class="hljs-property">@drawsPerSec</span>() &lt; <span class="hljs-property">@rate</span> <span class="hljs-comment"># throttle drawing to @rate</span>
+      <span class="hljs-property">@step</span>() <span class="hljs-keyword">unless</span> <span class="hljs-property">@multiStep</span>
+      <span class="hljs-property">@draw</span>()
+    <span class="hljs-keyword">if</span> <span class="hljs-property">@noRAF</span>
+      <span class="hljs-property">@animHandle</span> = setTimeout <span class="hljs-property">@animateDraws</span>, <span class="hljs-number">2</span> <span class="hljs-keyword">unless</span> <span class="hljs-property">@stopped</span>
+      u.deprecated <span class="hljs-string">"avoiding rAF"</span>
+    <span class="hljs-keyword">else</span>
+      <span class="hljs-property">@animHandle</span> = requestAnimationFrame <span class="hljs-property">@animateDraws</span> <span class="hljs-keyword">unless</span> <span class="hljs-property">@stopped</span>
+  <span class="hljs-attribute">animate</span>: <span class="hljs-function">-&gt;</span>
+    <span class="hljs-property">@animateSteps</span>() <span class="hljs-keyword">if</span> <span class="hljs-property">@multiStep</span>
+    <span class="hljs-property">@animateDraws</span>()</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
