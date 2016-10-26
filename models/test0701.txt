@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <title>Adding a Custom Overlay</title>
+    <style>
+      html, body, #map-canvas {
+        height: 100%;
+        margin: 0px;
+        padding: 0px;
+      }
+	</style>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp"></script>
+	<script src="../lib/agentscript.js"></script>
+	<script src="../tools/coffee-script.js"></script>
+	<script type="text/coffeescript">
+		#######################################################
+		#Google Map
+		#######################################################
+		map = null
+		mapOptions = null
+	 
+		initialize = () ->
+			google.maps.visualRefresh = true
+	 
+			mapOptions =
+				zoom: 8
+				center: new google.maps.LatLng(62.323907, -150.109291)
+	 
+			map = new google.maps.Map(document.getElementById('map'), mapOptions)
+			swBound = new google.maps.LatLng(62.281819, -150.287132)
+			neBound = new google.maps.LatLng(62.400471, -150.005608)
+			bounds = new google.maps.LatLngBounds(swBound,neBound)
+			overlay = new AgentOverlay 'layers', bounds, map
+	 
+			class AgentOverlay extends google.maps.OverlayView
+			constructor: (@id_, @bounds_, @map_) ->
+				console.log("Building AgentOverlay called '"+@id_+"'")
+				@div_=null
+				@setMap(@map_)
+			onAdd: () ->
+				div = document.createElement('div')
+				div.id=@id_
+				div.style.borderStyle='none'
+				div.style.borderWidth='0px'
+				div.style.position='absolute'
+				div.style.backgroundColor='#f00'
+				@div_=div
+				panes = this.getPanes()
+				panes.overlayLayer.appendChild(div)
+			draw: () ->
+				overlayProjection = @getProjection()
+				sw = overlayProjection.fromLatLngToDivPixel(@bounds_.getSouthWest())
+				ne = overlayProjection.fromLatLngToDivPixel(@bounds_.getNorthEast())
+				div = @div_
+				div.style.left = sw.x+'px'
+				div.style.top = ne.y+'px'
+				div.style.width = (ne.x-sw.x)+'px'
+				div.style.height = (sw.y-ne.y)+'px'
+				model = new MyModel "layers", 10, -25, 25, -20, 20, true
+				model.debug() # Debug: Put Model vars in global name space
+				model.start() # Run model immediately after startup initialization
+			onRemove: () ->
+				@div_.parentNode.removeChild(@div_)
+				@div_=null
+	 
+		google.maps.event.addDomListener window, 'load', initialize
+	</script>
+	  </head>
+  <body>
+	<div id="layers"></div>
+  </body>
+</html>

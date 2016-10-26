@@ -1,0 +1,112 @@
+<html>
+  <head>
+    <title>Wall Follower</title>
+    <script src="../lib/agentscript.js"></script>
+    <script src="../tools/coffee-script.js"></script>
+    <script type="text/coffeescript">
+
+# The NetLogo models library wall followers example
+# http://ccl.northwestern.edu/netlogo/models/WallFollowingExample
+# The key ideas are, for a right hand wall follower:
+#
+# * Turn right if there is no wall to the right, but there is one
+# to the right and behind.
+# * Keep turning until there is no wall head
+# * Take a step
+# * Make sure you are alwas on a patch center
+#
+# Similarly for left-hand wall followers w/ obvious changes, managed
+# by a +/-1 direction turtle variable.
+
+u = ABM.Util # static variables
+Color = ABM.Color
+ColorMaps = ABM.ColorMaps
+class MyModel extends ABM.Model
+  startup: ->
+  setup: ->
+    @refreshPatches = false
+    @turtles.setDefault "size", 2
+    @turtles.setDefault "penSize", 2
+
+    # direction: +1 follow right hand wall, -1 left hand
+    @turtles.own "direction"
+
+    # Old: Four shared colors, so @acolor === @bcolor works
+    @black = @patches[0].color # patch default
+    @green = [0, 255, 0]
+    # @brown = [222, 184, 135] # BurlyWood not Brown, it's too red
+    # Old color model
+    # @brown = [157, 110, 72] # NL's brown via show extract-rgb
+    @brown = ColorMaps.netLogoColors.brown
+    @blue = [0, 0, 255]
+    @population = 40
+
+    # Make some random walls for the turtles to follow
+    p.color = @brown for p in @patches when u.randomFloat(1) < 0.04
+    # Old Color model
+    #for p in (p for p in @patches when p.color is @brown)
+    for p in (p for p in @patches when Color.colorsEqual p.color, @brown)
+      n.color = @brown for n in @patches.inRadius p, u.randomFloat(3)
+    p.color = @brown for p in @patches when \
+      (n for n in p.n4 when n.color is @brown).length is 4
+
+    # Make some turtles. "sprout" puts them on patch center.
+    for p in u.nOf (p for p in @patches when p.color is @black), @population
+      p.sprout 1, @turtles, (a) => # fat arrow, this name space
+        a.penDown = true
+        if (p for p in a.p.n4 when p.color is @brown).length is 4
+          a.die()
+        else
+          a.face a.p.n4.oneOf()
+          if u.randomInt(2) is 0
+            a.direction = 1; a.color = @blue
+          else
+            a.direction = -1; a.color = @green
+    console.log "patches: #{@patches.length} turtles: #{@turtles.length}"
+
+  step: ->
+    @walk a for a in @turtles
+    # console.log @anim.toString() if @anim.ticks % 100 is 0
+
+  walk: (turtle) ->
+    direction = turtle.direction
+    # Turn right if right/left is black and trailing patch is brown.
+    # Keeps me on the wall when drifting off
+    if (not @wall(turtle, 90*direction)) and @wall(turtle, 135*direction)
+      turtle.right u.degToRad(90 * direction)
+
+    # Turn left/right if wall is ahead
+    while @wall(turtle, 0)
+      turtle.left u.degToRad (90 * direction)
+    # After all that, move forward, still on patch centers.
+    turtle.forward 1
+
+  wall: (turtle, angle) ->
+    # Note that angle may be positive or negative.  if angle is
+    # positive, the turtle looks right, if negative, left.
+    # Return true if wall is ahead.
+    angle = u.degToRad angle
+    p=turtle.patchRightAndAhead(angle, 1)
+    # Old color model:
+    # p.color is @brown
+    Color.colorsEqual p.color, @brown
+
+# div, patchSize, minX, maxX, minY, maxY, isTorus, hasNeighbors
+#   Defaults: 13, -16, 16, -16, 16, false, true
+model = new MyModel({
+  div: "layers"
+  size: 7
+  minX: -35
+  maxX: 35
+  minY: -35
+  maxY: 35
+  isTorus: true
+}).debug() # Debug: Put Model vars in global name space
+  .start() # Run model immediately after startup initialization
+
+    </script>
+  </head>
+  <body>
+    <div id="layers" style="padding:20"></div>
+  </body>
+</html>

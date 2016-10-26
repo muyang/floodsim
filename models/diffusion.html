@@ -1,0 +1,66 @@
+<html>
+  <head>
+    <title>Diffusion Model</title>
+    <script src="../lib/agentscript.js"></script>
+    <script src="../tools/coffee-script.js"></script>
+    <script type="text/coffeescript">
+
+    u = ABM.Util # ABM.Util alias
+    class MyModel extends ABM.Model
+      setup: ->
+
+        # No optimizations: 30fps
+        @patches.usePixels() # 57+fps
+        # @patches.cacheTurtlesHere() # 28-9fps, not needed * overhead
+        console.log "cacheTurtlesHere: ", @patches.turtles?
+
+        # two: 57+fps, fast patches get us to max
+
+
+        # globals
+        @population = 100
+        @diffusionRate = .70
+        @coolingRate = .10
+        @speed = .5
+
+        @anim.setRate 60 #, true
+
+        # defaults
+        @turtles.setDefault "size", 1.5
+        @turtles.setDefault "useSprites", true
+
+        @turtles.create @population
+        # @turtles.create @population, (a) => # fat arrow for @patches etc
+        #   a.size = 1.5
+        for p in @patches
+          p.heat = 0
+      step: ->
+        for p in @patches
+          p.heat *= (1-@coolingRate)
+        for a in @turtles
+          a.rotate u.randomCentered(u.degToRad(40))
+          a.forward @speed
+          a.p.heat = 1
+        @patches.diffuse "heat", @diffusionRate, [255,0,0]
+        # @stop() # debug: one step
+
+    # div, patchSize, minX, maxX, minY, maxY, isTorus, hasNeighbors
+    #   Defaults: 13, -16, 16, -16, 16, false, true
+    model = new MyModel {
+      div: "layers",
+      size: 10,
+      minX: -25,
+      maxX: 25,
+      minY: -20,
+      maxY: 20,
+      isTorus: true
+    }
+    model.debug() # Debug: Put Model vars in global name space
+    model.start() # Run model immediately after startup initialization
+
+    </script>
+  </head>
+  <body>
+    <div id="layers"></div>
+  </body>
+</html>

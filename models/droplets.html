@@ -1,0 +1,95 @@
+<html>
+  <head>
+    <title>Droplets Model</title>
+    <script src="../lib/agentscript.js"></script>
+    <script src="../lib/data.js"></script>
+    <script src="../tools/coffee-script.js"></script>
+    <script type="text/coffeescript">
+
+    u = ABM.Util; DataSet = ABM.DataSet # aliases
+
+    class MyModel extends ABM.Model
+      startup: ->
+        console.log "startup: elevation"
+        @elevation = DataSet.importAscDataSet "data/nldroplets.asc", (ds)=>
+          console.log "startup: creating slope/aspect data sets"
+          # Set the model to be used by the elevation (and derived)
+          # DataSets in `toDrawing()` and `toPatchVar()` below.
+          @elevation.setModel(@)
+          # All work due to hybred array/object return
+          # { slope: @slope, aspect: @aspect } = @elevation.slopeAndAspect()
+          { @slope, @aspect } = @elevation.slopeAndAspect()
+          # { @aspect, @slope } = @elevation.slopeAndAspect() # switched order fine
+          # [ @slope, @aspect ] = @elevation.slopeAndAspect()
+
+      setup: ->
+        console.log "setup"
+        @refreshPatches = @refreshLinks = false
+
+        @patches.own "elevation slope aspect"
+        # @globals "elevation slope aspect vision speed" # fix: problem with removeItem
+
+        @vision = 1 # try range in 1-5 or so
+        @speed = .25
+        @useAspect = true # model uses aspect/slope or elevation.
+        @lastMoved = @patches.length
+
+        @turtles.setDefault "shape", "square"
+        @turtles.setDefault "size", .5
+        @turtles.setDefault "color", [100,100,150]
+        @patches.cacheRect @vision, false # cache inRadius @vision
+
+        # Install startup globals into patches/drawing
+        # img = @elevation.toDrawing()
+        # @patches.installColors img
+        # p.elevation = p.color[0] for p in @patches # could also use toPatchVar below
+        # @slope.toPatchVar("slope")
+        # @aspect.toPatchVar("aspect")
+        @img=@elevation.toDrawing()
+        @elevation.toPatchVar("elevation")
+        @slope.toPatchVar("slope")
+        @aspect.toPatchVar("aspect")
+
+        p.sprout 1 for p in @patches
+        console.log "patches: #{@patches.length}, turtles: #{@turtles.length}"
+
+
+      step: ->
+        moved = 0
+        for a in @turtles
+          n = if @useAspect then a.p.n else a.p.pRect
+          n = n.minOneOf "elevation"
+          if a.p.elevation > n.elevation #or a.p.slope < .0001
+            if @useAspect
+              a.heading = a.p.aspect
+            else
+              a.face n
+            a.forward @speed
+            moved += 1
+        if moved is 0 or (@useAspect and @lastMoved is moved)
+          console.log "done, ticks: #{@anim.ticks}"
+          @stop()
+        if @anim.ticks % 100 is 0
+          # console.log @anim.toString(), "moved: #{moved}"
+          console.log "moved: #{moved}"
+          @lastMoved = moved
+
+    # div, patchSize, minX, maxX, minY, maxY, isTorus, hasNeighbors
+    #   Defaults: 13, -16, 16, -16, 16, false, true
+    model = new MyModel({
+      div: "layers",
+      size: 6,
+      minX: 0,
+      maxX: 80,
+      minY: 0,
+      maxY: 80
+    })
+    .debug() # Debug: Put Model vars in global name space
+    .start() # Run model immediately after startup initialization
+
+    </script>
+  </head>
+  <body>
+    <div id="layers"></div>
+  </body>
+</html>

@@ -1,0 +1,78 @@
+<html>
+  <head>
+    <title>Buttons Model</title>
+    <script src="../lib/agentscript.js"></script>
+    <script src="../tools/coffee-script.js"></script>
+    <script type="text/coffeescript">
+
+    u = ABM.Util # ABM.Util alias
+    class MyModel extends ABM.Model
+      setup: ->
+        @refreshPatches = false # for static patches
+        @refreshLinks = false # for static links .. drown as created
+
+        # globals
+        @buttons = 200
+        @cluster = 0
+
+        # defaults
+        @turtles.setDefault "shape", "circle"
+        @turtles.setDefault "size", 1.5
+        @turtles.setDefault "heading", 0 # override promotion to random angle
+        @links.setDefault "thickness", .5 # 2.5
+
+        @anim.setRate 60
+
+        @turtles.create @buttons, (a) => # fat arrow for @patches etc
+          a.setXY @patches.randomPt()...
+
+      step: ->
+        # console.log @anim.toString() if @anim.ticks % 100 is 0
+
+        b1 = @turtles.oneOf()
+        b2 = @turtles.other(b1).oneOf()
+
+        @links.create b1, b2, (l) =>
+          l.draw @contexts.links
+
+        g = @graphOf b1
+        c = u.minOneOf(g, "id").color
+        node.color = c for node in g
+        if g.length > @cluster
+          console.log "New largest cluster: size: #{g.length} tick: #{@anim.ticks}"
+        @cluster = Math.max @cluster, g.length
+
+        if @cluster is @buttons
+          console.log "Completed at tick #{@anim.ticks}:  Cluster size #{@cluster} Links: #{@links.length}"
+          @stop()
+
+      graphOf: (node) ->
+        a.marked = false for a in @turtles
+        @markNeighbors node
+        a for a in @turtles when a.marked
+      markNeighbors: (node) ->
+        node.marked = true
+        unMarked = (n for n in node.linkNeighbors() when not n.marked)
+        @markNeighbors n for n in unMarked
+
+
+    # div, patchSize, minX, maxX, minY, maxY, isTorus, hasNeighbors
+    #   Defaults: 13, -16, 16, -16, 16, false, true
+    model = new MyModel {
+      div: "layers",
+      size: 13,
+      minX: -16,
+      maxX: 16,
+      minY: -16,
+      maxY: 16,
+      hasNeighbors: false
+    }
+    model.debug() # Debug: Put Model vars in global name space
+    model.start() # Run model immediately after startup initialization
+
+    </script>
+  </head>
+  <body>
+    <div id="layers"></div>
+  </body>
+</html>

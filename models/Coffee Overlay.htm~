@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>coffee Overlay</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp"></script>
+    <script src="../lib/agentscript.js"></script>
+	<script src="../tools/coffee-script.js"></script>
+    <script type="text/coffeescript">
+    map = null
+    mapOptions = null
+ 
+    initialize = () ->
+      google.maps.visualRefresh = true
+
+      mapOptions =
+        zoom: 8
+        center: new google.maps.LatLng(62.323907, -150.109291)
+
+      map = new google.maps.Map(document.getElementById('map'), mapOptions)
+      swBound = new google.maps.LatLng(62.281819, -150.287132)
+      neBound = new google.maps.LatLng(62.400471, -150.005608)
+      bounds = new google.maps.LatLngBounds(swBound,neBound)
+      overlay = new AgentOverlay 'layers', bounds, map
+        
+      class AgentOverlay extends google.maps.OverlayView
+        constructor: (@id_, @bounds_, @map_) ->
+          console.log("Building AgentOverlay called '"+@id_+"'")
+          @div_=null
+          @setMap(@map_)
+        onAdd: () ->
+          #console.log("add")
+          div = document.createElement('div')
+          div.id=@id_ #+'_outer'
+          div.style.borderStyle='none'
+          div.style.borderWidth='0px'
+          div.style.position='absolute'
+          div.style.backgroundColor='#f00'
+          @div_=div
+          panes = this.getPanes()
+          panes.overlayLayer.appendChild(@div_)
+
+          @model_ = new MyModel "layers", 5, -25, 25, -20, 20, true
+          @model_.debug() # Debug: Put Model vars in global name space
+          @model_.start() # Run model immediately after startup initialization
+        draw: () ->
+          #console.log("draw")
+          overlayProjection = @getProjection()
+          sw = overlayProjection.fromLatLngToDivPixel(@bounds_.getSouthWest())
+          ne = overlayProjection.fromLatLngToDivPixel(@bounds_.getNorthEast())
+          geoPxWidth = ne.x-sw.x #width of map canvas
+          geoPxHeight = sw.y-ne.y #height of map canvas
+          div = @div_
+          div.style.left = sw.x+'px'
+          div.style.top = ne.y+'px'
+          div.style.width = geoPxWidth+'px'
+          div.style.height = geoPxHeight+'px'
+          #go through each context (canvas2d or image element) and change its size, scaling and translation
+          for name, ctx of ABM.contexts 
+            if ctx.canvas
+              ctx.canvas.width=geoPxWidth
+              ctx.canvas.height=geoPxHeight
+              ctx.scale geoPxWidth/@model_.world.pxWidth*@model_.world.size, -geoPxHeight/@model_.world.pxHeight*@model_.world.size
+              ctx.translate -@model_.world.minXcor, -@model_.world.maxYcor
+              #@model_.draw(ctx) #you need to force a redraw of the layer, otherwise it isn't displayed (MOVED TO END)
+            else
+              #it's an image element, so just resize it
+              ctx.width=geoPxWidth
+              ctx.height=geoPxHeight
+            ABM.model.draw(true) #forces a redraw of all layers
+            #u.clearCtx(ctx) to make the context transparent?
+            #u.clearCtx(ABM.contexts.patches)
+          onRemove: () ->
+            #console.log("remove")
+            @div_.parentNode.removeChild(@div_)
+            @div_=null
+ 
+    google.maps.event.addDomListener window, 'load', initialize
+    </script>
+</head>
+<body>
+    <div id="map" width=100 height=60></div>
+    <div id="layers"></div>
+</body>
+</html>
